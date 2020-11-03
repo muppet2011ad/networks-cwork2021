@@ -11,10 +11,16 @@ port = int(sys.argv[3])  # Grab all command line arguments we need
 
 def handle_receive():
     while True:  # Mainloop for receiving data
-        message = sock.recv(1024).decode()  # Receive message and decode it into a string
+        global nickname
+        message = long_receive(sock).decode()  # Receive message and decode it into a string
         if len(message) == 0:  # If the socket reads no bytes, the server closed the connection
             entry_box.config(state=tkinter.DISABLED)  # Disable the entry box to prevent further message sending
             return  # And quit out the receive thread
+        elif message.startswith("[SERVER] " + nickname + " has changed name to "):
+            nickname = message.split()[6][:-1]
+            tk.title("MSN Messenger Redux - Connected to " + host + ":" + str(port) + " as " + nickname)
+        elif message == "/err":
+            message = "[ERROR] Error receiving message from server."
         if message_scrollbar.get()[1] == 1.0:  # If the scrollbar is at the end
             auto_scroll = True  # Set autoscroll
         else:

@@ -76,6 +76,14 @@ def handle_connection(client):
             response_body = "\n\t".join(nicks.values()) # Get list of clients
             long_send(client, ("[SERVER] Connected Clients:\n\t" + response_body).encode()) # Send that to the client
             log_message(nicks[client] + " requested a list of clients.") # Log invocation of command
+        elif message_decode.startswith("/nick"): # Nickname command
+            new_nick = message_decode.split()[1] # Get nickname from message
+            if new_nick in nicks.values(): # If the nickname is taken
+                long_send(client, "[ERROR] Nickname already taken.".encode())
+            else:
+                log_message("[SERVER] " + nicks[client] + " has changed name to " + new_nick + ".") # Keep a log in the server
+                send_to_all("[SERVER] " + nicks[client] + " has changed name to " + new_nick + ".") # Alert everyone
+                nicks[client] = new_nick # Update the nickname on record
         else:
             prefixed_message = "[" + nicks[client] + "] " + message_decode
             send_to_all(prefixed_message)
