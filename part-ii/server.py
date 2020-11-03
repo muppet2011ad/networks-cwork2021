@@ -3,6 +3,7 @@ import threading
 import sys
 import datetime
 import atexit
+from tcp_helpers import *
 
 
 def log_message(message):
@@ -27,26 +28,26 @@ def accept_connections():
 
 
 def handle_connection(client):
-    uname = client.recv(1024).decode()  # Client should immediately send username after connecting
+    uname = long_receive(client).decode()  # Client should immediately send username after connecting
     free = True
     for nick in nicks.values():  # Loop to check if nickname is free
         if uname == nick:
             free = False
             break
     if not free:
-        client.send("[ERROR] Nickname already taken!\n".encode())  # Tell the client their name is taken
+        long_send(client, "[ERROR] Nickname already taken!".encode())  # Tell the client their name is taken
         log_message("[SERVER-INTERNAL] Client @ " + addresses[client][0] + "attempted to connect, but nickname was already taken.")  # Log it
         client.close()  # Disconnect the client
         del addresses[client]
         return
     nicks[client] = uname  # Set the client's nickname
-    client.send(("[MOTD] " + motd + "\n").encode())  # Send the motd to the client
+    long_send(client, ("[MOTD] " + motd).encode())  # Send the motd to the client
     log_message("[SERVER-INTERNAL] Client @ " + addresses[client][0] + ":" + str(addresses[client][1]) + " connected with nickname " + nicks[client] + ".")  # Log the connection
-    send_to_all("[SERVER] " + nicks[client] + " has joined the chat.\n")
+    send_to_all("[SERVER] " + nicks[client] + " has joined the chat.")
 
     while True:  # Mainloop to handle incoming messages
         try:
-            message = client.recv(1024)
+            message = long_receive(client)
         except ConnectionResetError:  # If we error out
             message = b""  # Set the message to be blank (so it's treated as a socket close)
         message_decode = message.decode()  # Get the message and decode it
@@ -58,36 +59,39 @@ def handle_connection(client):
             send_to_all(announcement + "\n")
             log_message(announcement)
             break
+        elif message_decode == "/err": # Should only occur if there is an issue with message receiving
+            log_message("Communication error with client " + nicks[client] + ". A message was probably dropped :(")
+            long_send(client, "[ERROR] Error receiving message from client.")
         elif message_decode.startswith("/whis"): # Whisper function
             target_client = find_nick(message_decode.split()[1]) # Finds the client with the target nickname
             if not target_client: # If the target is None
-                client.send("[ERROR] User not found!\n".encode()) # Inform the user as such
+                long_send(client, "[ERROR] User not found!".encode()) # Inform the user as such
                 continue # Stop dealing with this message
             message_body = message_decode[6:].partition(" ")[2] # Get body of the message
             prefixed_message = "[" + nicks[client] + "] [WHISPER] " + message_body # Apply prefix and whisper tag
-            target_client.send((prefixed_message + "\n").encode()) # Send whisper to target
-            client.send(("[SERVER] Whisper to " + nicks[target_client] + " sent.\n").encode()) # Send confirmation of whisper to sender
+            long_send(target_client, prefixed_message.encode()) # Send whisper to target
+            long_send(client, ("[SERVER] Whisper to " + nicks[target_client] + " sent.").encode()) # Send confirmation of whisper to sender
             log_message(nicks[client] + " whispered to " + nicks[target_client]) # Log the occurrence of a whisper
         elif message_decode.startswith("/here"): # Command to get connected clients
             response_body = "\n\t".join(nicks.values()) # Get list of clients
-            client.send(("[SERVER] Connected Clients:\n\t" + response_body + "\n").encode()) # Send that to the client
+            long_send(client, ("[SERVER] Connected Clients:\n\t" + response_body).encode()) # Send that to the client
             log_message(nicks[client] + " requested a list of clients.") # Log invocation of command
         else:
             prefixed_message = "[" + nicks[client] + "] " + message_decode
-            send_to_all(prefixed_message + "\n")
+            send_to_all(prefixed_message)
             log_message(prefixed_message)
 
 
 def send_to_all(message):
     for client_sock in addresses:
-        client_sock.send(message.encode())
+        long_send(client_sock, message.encode())
 
 
 def kill_all_connections():
     log_message("[SERVER] Server is going down.")  # Create log entry
     for client_sock in addresses:
         try:
-            client_sock.send("[SERVER] Server is going down.\n".encode())  # Give a message to each client so they don't get confused
+            long_send(client_sock, "[SERVER] Server is going down.".encode())  # Give a message to each client so they don't get confused
             client_sock.close()  # Close the connection
         except ConnectionResetError:  # Skip if the connection is already closed for some reason
             pass

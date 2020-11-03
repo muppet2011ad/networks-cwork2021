@@ -2,6 +2,7 @@ import socket
 import threading
 import sys
 import tkinter
+from tcp_helpers import *
 
 nickname = sys.argv[1]
 host = sys.argv[2]
@@ -19,7 +20,7 @@ def handle_receive():
         else:
             auto_scroll = False  # Otherwise we don't want to autoscroll
         message_text.config(state=tkinter.NORMAL)  # Enable text editing briefly
-        message_text.insert(tkinter.END, message)  # Insert the message
+        message_text.insert(tkinter.END, message + "\n")  # Insert the message
         if auto_scroll:
             message_text.see(tkinter.END)  # Keep at the end of the text box if we're autoscrolling
         message_text.config(state=tkinter.DISABLED)  # Go back to disabled
@@ -28,7 +29,7 @@ def handle_receive():
 def handle_send(event=None):
     message = entry_string.get()  # Get the message the user intended to send
     entry_string.set("")  # Clear the text entry
-    sock.send(message.encode())  # Send the message to the server
+    long_send(sock, message.encode())  # Send the message to the server
     if message == "/quit":  # If the message is quit
         sock.close()  # Close the connection
         tk.quit()  # Kill the thread
@@ -62,6 +63,6 @@ entry_box.pack(fill=tkinter.X)  # Pack everything into the GUI
 sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 sock.connect((host, port))  # Connect to the server
 threading.Thread(target=handle_receive, daemon=True).start()  # Start the receiving thread
-sock.send(nickname.encode())  # Send the nickname
+long_send(sock, nickname.encode())  # Send the nickname
 
 tkinter.mainloop()  # Open the GUI
