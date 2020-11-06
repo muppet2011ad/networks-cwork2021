@@ -9,11 +9,13 @@ port = int(sys.argv[3])  # Grab all command line arguments we need
 
 
 def handle_receive():
-    while True:  # Mainloop for receiving data
+    conn_lost = False
+    while not conn_lost:  # Mainloop for receiving data
         message = sock.recv(1024).decode()  # Receive message and decode it into a string
         if len(message) == 0:  # If the socket reads no bytes, the server closed the connection
             entry_box.config(state=tkinter.DISABLED)  # Disable the entry box to prevent further message sending
-            return  # And quit out the receive thread
+            message = "-------------------------\nConnection to Server Lost\n"
+            conn_lost = True
         if message_scrollbar.get()[1] == 1.0:  # If the scrollbar is at the end
             auto_scroll = True  # Set autoscroll
         else:
@@ -60,8 +62,12 @@ message_frame.pack()
 entry_box.pack(fill=tkinter.X)  # Pack everything into the GUI
 
 sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-sock.connect((host, port))  # Connect to the server
-threading.Thread(target=handle_receive, daemon=True).start()  # Start the receiving thread
-sock.send(nickname.encode())  # Send the nickname
+try:
+    sock.connect((host, port))  # Connect to the server
+    threading.Thread(target=handle_receive, daemon=True).start()  # Start the receiving thread
+    sock.send(nickname.encode())  # Send the nickname
+except ConnectionError:
+    print("Failed to connect to server. Are you sure the server is running and that you have the hostname/port correct?")
+    sys.exit()
 
 tkinter.mainloop()  # Open the GUI

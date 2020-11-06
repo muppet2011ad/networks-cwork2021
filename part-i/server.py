@@ -37,24 +37,35 @@ def handle_connection(client):
     log_message("[SERVER-INTERNAL] Client @ " + addresses[client][0] + ":" + str(addresses[client][1]) + " connected with nickname " + nicks[client] + ".")  # Log the connection
     send_to_all("[SERVER] " + nicks[client] + " has joined the chat.\n")
 
-    while True:  # Mainloop to handle incoming messages
-        try:
-            message = client.recv(1024)
-        except ConnectionResetError:  # If we error out
-            message = b""  # Set the message to be blank (so it's treated as a socket close)
-        message_decode = message.decode()  # Get the message and decode it
-        if len(message) == 0 or message_decode == "/quit":  # If we get an empty message (socket closed) or quit command
-            announcement = "[SERVER] " + nicks[client] + " has left the chat."  # Prep announcement
-            del addresses[client]
-            del nicks[client]
-            client.close()  # Close the connection and delete all references
-            send_to_all(announcement + "\n")
-            log_message(announcement)
-            break
-        else:
-            prefixed_message = "[" + nicks[client] + "] " + message_decode
-            send_to_all(prefixed_message + "\n")
-            log_message(prefixed_message)
+    try:
+        while True:  # Mainloop to handle incoming messages
+            try:
+                message = client.recv(1024)
+            except ConnectionResetError:  # If we error out
+                message = b""  # Set the message to be blank (so it's treated as a socket close)
+            message_decode = message.decode()  # Get the message and decode it
+            try:
+                if len(message) == 0 or message_decode == "/quit":  # If we get an empty message (socket closed) or quit command
+                    announcement = "[SERVER] " + nicks[client] + " has left the chat."  # Prep announcement
+                    del addresses[client]
+                    del nicks[client]
+                    client.close()  # Close the connection and delete all references
+                    send_to_all(announcement + "\n")
+                    log_message(announcement)
+                    break
+                elif message_decode == "test":
+                    raise ValueError("test error please ignore")
+                else:
+                    prefixed_message = "[" + nicks[client] + "] " + message_decode
+                    send_to_all(prefixed_message + "\n")
+                    log_message(prefixed_message)
+            except Exception as e:
+                log_message("[SERVER-INTERNAL] [ERROR] " + str(e))
+                client.send("[ERROR] Error processing last message.\n")
+    finally:
+        del addresses[client]
+        del nicks[client]
+        client.close()
 
 
 def send_to_all(message):
