@@ -2,7 +2,31 @@ import socket
 import threading
 import sys
 import tkinter
-from tcp_helpers import *
+
+
+def long_receive(s):
+    message_len_str = s.recv(8)
+    if len(message_len_str) == 0:
+        return b""
+    else:
+        try:
+            message_len = int(message_len_str)
+        except ValueError:
+            return "/err".encode()
+        if message_len <= 1024:
+            return s.recv(message_len)
+        message = b""
+        while message_len > 1024:
+            message += s.recv(1024)
+            message_len -= 1024
+        return message + s.recv(message_len)
+
+
+def long_send(s, message):
+    message_len = len(message)
+    to_send = str(message_len).zfill(8).encode() + message
+    s.sendall(to_send)
+
 
 nickname = sys.argv[1]
 host = sys.argv[2]
