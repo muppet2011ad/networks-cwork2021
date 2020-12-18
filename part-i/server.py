@@ -53,8 +53,6 @@ def handle_connection(client):
                     send_to_all(announcement + "\n")
                     log_message(announcement)
                     break
-                elif message_decode == "test":
-                    raise ValueError("test error please ignore")
                 else:
                     prefixed_message = "[" + nicks[client] + "] " + message_decode
                     send_to_all(prefixed_message + "\n")
@@ -63,9 +61,10 @@ def handle_connection(client):
                 log_message("[SERVER-INTERNAL] [ERROR] " + str(e))
                 client.send("[ERROR] Error processing last message.\n")
     finally:
-        del addresses[client]
-        del nicks[client]
-        client.close()
+        if client in addresses:
+            del addresses[client]
+            del nicks[client]
+            client.close()
 
 
 def send_to_all(message):
@@ -90,7 +89,7 @@ if __name__ == "__main__":
     nicks = {}
     addresses = {}
 
-    motd = "Dick Cheney made money from the Iraq War!"
+    motd = "Insert friendly and welcoming message here."
     logfile = open("server.log", "a+")
 
     host = ""
