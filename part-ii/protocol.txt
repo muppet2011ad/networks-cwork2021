@@ -1,0 +1,73 @@
+# Protocol for Networks Coursework
+
+## Types of messages
+
+* All messages should be prefaced with an 8-character (each character being a digit) header defining the length of the rest of the message.
+* The rest of this section discusses the actual body of the message after this header.
+
+### Initial Nickname Setup
+
+* The first message sent by the client after establishing a TCP connection should contain only the nickname the user intends to connect with.
+* Possible responses from server:
+    * "[ERROR] Nickname already taken!" - indicates the requested nickname is not available. The server will close the connection after sending this message.
+    * "[MOTD] ..." - The server sending a message starting [MOTD] indicates the nickname was accepted. The client can now send any other type of message on the connection.
+    
+### Public Message
+
+#### Sending
+
+* If the client wishes to send a message to all connected clients, then a message containing only the message body can be sent to the server. It will then broadcast the message to all clients (including the sender). The message cannot be /err however, as this is used internally to track error states.
+
+#### Receiving
+
+* Public messages are sent to connected clients in the format "[sender-nickname] message-body".
+
+### Whisper Message
+
+#### Sending
+
+* If the client wishes to send a message to one other client, the message should be sent in the format "/whis target-nickname message-content", where target-nickname is the nickname of the intended recipient and message-content is the message to be sent.
+* Possible responses from server:
+    * "[SERVER] Whisper to target-nickname sent." - the whisper was delivered to the recipient.
+    * "[ERROR] User not found!" - there is no one connected to the server with [target-nickname] as their nickname.
+    * "[ERROR] Specify a user!" - the target-nickname parameter was not given.
+    
+#### Receiving
+
+* Whisper messages are received in the format "[sender-nickname] [WHISPER] message-body"
+
+### Get Connected Clients
+
+* If the client wishes to get a list of clients connected to the server, then any message starting "/here" should be sent. 
+* Response from server:
+    * "[SERVER] Connected Clients:\n" followed by a list of nicknames (one per line), each line starting with "\t"
+
+### Changing Nickname
+
+#### Sending
+
+* If the client wishes to change their nickname, a message should be sent in the format "/nick new-nickname", where new-nickname is the desired nickname for the client.
+* Possible responses from the server:
+    * "[ERROR] Nickname already taken." - the requested nickname is already in use, therefore your nickname was not changed.
+    * "[ERROR] Specify a nickname!" - the new-nickname parameter was not given.
+    * "[SERVER] original-nickname has changed name to new-nickname." - the nickname change was successful.
+    
+#### Receiving
+
+* Whenever another client changes their nickname, the server will send the message "[SERVER] original-nickname has changed name to new-nickname."
+
+### Misc Notifications from Server
+
+#### User Joins/Leaves
+
+* When a user joins the server, all clients are sent the message "[SERVER] client-nickname has joined the chat."
+* When a user leaves the server, all clients are sent the message "[SERVER] client-nickname has left the chat."
+
+#### Server Termination
+
+* If the server shuts down for any reason, all clients are sent the message "[SERVER] Server is going down.". Following this message, the server will close the connection.
+
+## Design Choices
+
+When writing the part II, I found the best way to allow non-fixed length messages to be sent was to simply preface a message with its length. This takes just a few bytes and is much easier to deal with than null-terminating messages.
+As for the commands themselves, a simple "/cmd args" format makes them easy to implement since the server can just parse the plain text message and act accordingly. All responses are sent by the server in a format that can be immediately output, avoiding any over-engineering in creating HTTP-style error codes and responses.

@@ -5,27 +5,29 @@ import tkinter
 
 
 def long_receive(s):
-    message_len_str = s.recv(8)
-    if len(message_len_str) == 0:
+    message_len_str = s.recv(8)  # First 8 characters encode the length of the message
+    if len(message_len_str) == 0:  # If we can't read anything from the socket then that means it's disconnected to return empty
         return b""
     else:
         try:
             message_len = int(message_len_str)
         except ValueError:
-            return "/err".encode()
-        if message_len <= 1024:
+            return "/err".encode()  # If we have an error decoding the length of the message then we return an error
+        if message_len <= 1024:  # If it's a short message just get the whole thing in one go
             return s.recv(message_len)
         message = b""
-        while message_len > 1024:
+        while message_len > 1024:  # Otherwise we keep reading blocks of 1024 bytes until the whole message is read
             message += s.recv(1024)
             message_len -= 1024
         return message + s.recv(message_len)
 
 
 def long_send(s, message):
-    message_len = len(message)
-    to_send = str(message_len).zfill(8).encode() + message
-    s.sendall(to_send)
+    message_len = len(message)  # Get the length of the message
+    if message_len == 0:  # Don't bother sending an empty message
+        return
+    to_send = str(message_len).zfill(8).encode() + message  # Encode the message
+    s.sendall(to_send)  # Send it all
 
 
 nickname = sys.argv[1]

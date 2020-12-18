@@ -28,7 +28,7 @@ def handle_connection(client):
             break
     if not free:
         client.send("[ERROR] Nickname already taken!\n".encode())  # Tell the client their name is taken
-        log_message("[SERVER-INTERNAL] Client @ " + addresses[client][0] + "attempted to connect, but nickname was already taken.")  # Log it
+        log_message("[SERVER-INTERNAL] Client @ " + addresses[client][0] + " attempted to connect, but nickname was already taken.")  # Log it
         client.close()  # Disconnect the client
         del addresses[client]
         return

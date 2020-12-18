@@ -30,14 +30,12 @@ def handle_receive():
 def handle_send(event=None):
     message = entry_string.get()  # Get the message the user intended to send
     entry_string.set("")  # Clear the text entry
+    if message == "":  # Don't send an empty message
+        return
     sock.send(message.encode())  # Send the message to the server
     if message == "/quit":  # If the message is quit
         sock.close()  # Close the connection
         tk.quit()  # Kill the thread
-
-
-def window_close(event=None):  # Called if the user closes the window
-    sock.send("/quit".encode())  # Send a quit message to the server for it to close the connection
 
 
 # Horrible GUI stuff
